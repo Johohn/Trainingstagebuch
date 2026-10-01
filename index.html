@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport-fit=cover: Notch/Safe-Area; resizes-content: Tastatur schiebt Sheet hoch -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="description" content="Persönliches Trainingstagebuch für Ultimate Frisbee">
+  <!-- Theme-Farbe je Hell/Dunkel-Modus, damit installierte App "nativ" wirkt -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#eef1f6">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1420">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Trainingstagebuch</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Kopfbereich -->
+  <header class="app-header">
+    <div class="app-title">
+      <img src="icons/icon-192.png" alt="" width="28" height="28" class="app-logo">
+      <h1>Trainingstagebuch</h1>
+    </div>
+    <button id="btnSettings" class="icon-btn" aria-label="Einstellungen"
+            title="Einstellungen &amp; Backup">&#9881;&#65038;</button>
+  </header>
+
+  <main>
+    <!-- Kalender-Karte -->
+    <section class="card" id="calendarCard" aria-label="Monatskalender">
+      <div class="cal-nav">
+        <button id="btnPrev" class="icon-btn" aria-label="Voriger Monat">&#8249;</button>
+        <h2 id="monthLabel" class="month-label">–</h2>
+        <button id="btnNext" class="icon-btn" aria-label="Nächster Monat">&#8250;</button>
+      </div>
+      <button id="btnToday" class="btn-today" type="button">Heute</button>
+
+      <div class="weekday-row" aria-hidden="true">
+        <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span>
+        <span>Fr</span><span>Sa</span><span>So</span>
+      </div>
+      <!-- Wochentage generiert app.js; Swipe links/rechts wechselt den Monat -->
+      <div id="calGrid" class="cal-grid"></div>
+      <p class="cal-hint" aria-hidden="true">Tippe auf einen Tag, um dein Training zu erfassen.</p>
+    </section>
+
+    <!-- Monats-Zusammenfassung -->
+    <section class="card" aria-label="Monatsübersicht">
+      <h2 class="card-title">Monatsübersicht</h2>
+      <ul id="summary" class="summary"></ul>
+      <p id="summaryTotal" class="summary-total"></p>
+    </section>
+
+    <!-- Verlauf: Balkendiagramm der letzten 12 Monate -->
+    <section class="card" aria-label="Verlauf der letzten 12 Monate">
+      <h2 class="card-title">Letzte 12 Monate</h2>
+      <!-- Gestapelte Balken generiert app.js; Höhe = Einheiten, Farbe = Kategorie -->
+      <div id="chart" class="chart"></div>
+    </section>
+
+    <!-- Legende -->
+    <section class="card" aria-label="Legende">
+      <h2 class="card-title">Legende</h2>
+      <ul id="legend" class="legend"></ul>
+    </section>
+  </main>
+
+  <!-- Bottom Sheet: Tag bearbeiten -->
+  <div id="backdrop" class="backdrop" hidden></div>
+  <div id="sheet" class="sheet" role="dialog" aria-modal="true"
+       aria-labelledby="sheetDate" hidden>
+    <!-- Griffzone: Wischen nach unten schließt das Sheet -->
+    <div id="sheetDrag" class="sheet-drag">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="sheetDate" class="sheet-date">–</h2>
+        <button id="btnCloseSheet" class="icon-btn" aria-label="Schließen">&#10005;</button>
+      </div>
+    </div>
+    <p class="sheet-sub">Was hast du trainiert?</p>
+    <div id="chipGrid" class="chip-grid"></div>
+    <!-- Detail-Textfeld pro ausgewählter Einheit (generiert app.js) -->
+    <div id="detailArea" class="detail-area"></div>
+  </div>
+
+  <!-- Bottom Sheet: Einstellungen / Backup -->
+  <div id="settingsBackdrop" class="backdrop" hidden></div>
+  <div id="settingsSheet" class="sheet" role="dialog" aria-modal="true"
+       aria-labelledby="settingsTitle" hidden>
+    <div id="settingsSheetDrag" class="sheet-drag">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="settingsTitle" class="sheet-date">Einstellungen</h2>
+        <button id="btnCloseSettings" class="icon-btn" aria-label="Schließen">&#10005;</button>
+      </div>
+    </div>
+    <div class="settings-body">
+      <p class="settings-info" id="dataInfo"></p>
+      <button id="btnExport" class="btn btn-primary" type="button">Daten exportieren</button>
+      <button id="btnImport" class="btn" type="button">Daten importieren</button>
+      <input id="fileImport" type="file" accept=".json,application/json" hidden>
+
+      <!-- Bestätigung vor dem Import-Überschreiben -->
+      <div id="importConfirm" class="import-confirm" hidden>
+        <p id="importInfo" class="settings-info"></p>
+        <div class="confirm-row">
+          <button id="btnImportCancel" class="btn" type="button">Abbrechen</button>
+          <button id="btnImportConfirm" class="btn btn-danger" type="button">Überschreiben</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kurze Statusmeldung (z. B. "Gespeichert", Import-Fehler) -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

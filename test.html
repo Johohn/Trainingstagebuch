@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<!-- Nur für Entwicklung: Logik-Tests, headless ausführbar über
+     msedge --headless --disable-gpu --dump-dom test.html -->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>TT Tests</title>
+</head>
+<body>
+<pre id="results">LAEUFT...</pre>
+<script src="app.js"></script>
+<script>
+"use strict";
+(function () {
+  const TT = window.TT;
+  const out = [];
+  let passed = 0, failed = 0;
+
+  function check(name, actual, expected) {
+    const ok = JSON.stringify(actual) === JSON.stringify(expected);
+    if (ok) { passed++; out.push("PASS " + name); }
+    else { failed++; out.push("FAIL " + name + " | erwartet: " + JSON.stringify(expected) + " | ist: " + JSON.stringify(actual)); }
+  }
+  function ok(name, cond) { check(name, !!cond, true); }
+
+  /* --- Datum-Basics --- */
+  check("dateKey Format", TT.dateKey(2026, 9, 1), "2026-10-01");
+  check("dateKey Auffuellen", TT.dateKey(2026, 0, 5), "2026-01-05");
+  check("parseKey gueltig", TT.parseKey("2026-10-01"), [2026, 9, 1]);
+  check("parseKey ungueltig Monat", TT.parseKey("2026-13-01"), null);
+  check("parseKey ungueltig Tag", TT.parseKey("2026-10-00"), null);
+  check("parseKey ungueltig Text", TT.parseKey("abc"), null);
+  check("parseKey ungueltig Typ", TT.parseKey(42), null);
+  ok("Round-Trip key->parse->key",
+     (function () { const k = "2024-02-29"; const p = TT.parseKey(k); return TT.dateKey(p[0], p[1], p[2]); })() === "2024-02-29");
+
+  /* --- Monatslaengen & Schaltjahre --- */
+  check("Feb 2024 (Schaltjahr)", TT.daysInMonth(2024, 1), 29);
+  check("Feb 2023", TT.daysInMonth(2023, 1), 28);
+  check("Feb 2100 (kein Schaltjahr)", TT.daysInMonth(2100, 1), 28);
+  check("Feb 2000 (Schaltjahr)", TT.daysInMonth(2000, 1), 29);
+  check("April", TT.daysInMonth(2026, 3), 30);
+  check("Dezember", TT.daysInMonth(2026, 11), 31);
+
+  /* --- Kalendergitter Oktober 2026: 1. = Donnerstag, Montag-Start --- */
+  const oct = TT.buildMonthGrid(2026, 9);
+  check("Okt 2026: erste Zelle ist Mo 28.09.", oct[0].key, "2026-09-28");
+  check("Okt 2026: fuehrende Tage nicht im Monat", oct.slice(0, 3).every(c => !c.inMonth), true);
+  check("Okt 2026: 1. Okt an Index 3", oct[3].key, "2026-10-01");
+  check("Okt 2026: letzter Tag im Gitter", oct.some(c => c.key === "2026-10-31"), true);
+  check("Okt 2026: Laenge ganzer Wochen", oct.length % 7, 0);
+
+  /* --- Schaltjahr-Februar --- */
+  const feb24 = TT.buildMonthGrid(2024, 1);
+  check("Feb 2024: 29 Tage enthalten", feb24.some(c => c.key === "2024-02-29"), true);
+  check("Feb 2024: letzte Zelle", feb24[feb24.length - 1].key, "2024-03-03");
+  const feb23 = TT.buildMonthGrid(2023, 1);
+  check("Feb 2023: 28 Tage, letzte Zelle", feb23[feb23.length - 1].key, "2023-03-05");
+
+  /* --- Monat, der mit Montag beginnt --- */
+  (function () {
+    const y = 2027, m = 7;
+    const firstWd = (new Date(y, m, 1).getDay() + 6) % 7; // 0 = Montag
+    const cells = TT.buildMonthGrid(y, m);
+    check("Aug 2027: erste Zelle ist Montag", new Date(TT.parseKey(cells[0].key)[0], TT.parseKey(cells[0].key)[1], TT.parseKey(cells[0].key)[2]).getDay(), 1);
+    const idx = cells.findIndex((c) => c.key === TT.dateKey(y, m, 1));
+    check("Aug 2027: 1. steht am Wochentag-Index", idx, firstWd);
+  })();
+
+  /* --- Systematische Pruefung: 5 Jahre x 12 Monate gegen native Date --- */
+  let gridOk = true, gridMsg = "";
+  for (let y = 2023; y <= 2027; y++) {
+    for (let m = 0; m < 12; m++) {
+      const cells = TT.buildMonthGrid(y, m);
+      if (cells.length % 7 !== 0) { gridOk = false; gridMsg = y + "-" + (m + 1) + ": Laenge " + cells.length; break; }
+      const p0 = TT.parseKey(cells[0].key);
+      if (new Date(p0[0], p0[1], p0[2]).getDay() !== 1) { gridOk = false; gridMsg = y + "-" + (m + 1) + ": Start kein Montag"; break; }
+      let seen = 0, prevDay = 0, badSeq = false;
+      cells.forEach((c) => {
+        const p = TT.parseKey(c.key);
+        if (p[0] === y && p[1] === m) {
+          if (c.inMonth !== true) badSeq = true;
+          if (p[2] !== prevDay + 1) badSeq = true;
+          prevDay = p[2]; seen++;
+        } else if (c.inMonth !== false) badSeq = true;
+      });
+      if (seen !== TT.daysInMonth(y, m) || badSeq) {
+        gridOk = false; gridMsg = y + "-" + (m + 1) + ": Tage " + seen + "/" + TT.daysInMonth(y, m) + " badSeq=" + badSeq;
+        break;
+      }
+    }
+    if (!gridOk) break;
+  }
+  ok("Gitter 2023-2027 systematisch korrekt " + (gridOk ? "" : gridMsg), gridOk);
+
+  /* --- Deutsches Datumsformat --- */
+  check("formatDateDE 1. Okt 2026", TT.formatDateDE("2026-10-01"), "Donnerstag, 1. Oktober");
+  check("formatDateDE mit Jahr", TT.formatDateDE("2026-10-01", true), "Donnerstag, 1. Oktober 2026");
+  check("formatDateDE 29. Feb 2024", TT.formatDateDE("2024-02-29"), "Donnerstag, 29. Februar");
+  check("formatDateDE 31. Dez", TT.formatDateDE("2026-12-31"), "Donnerstag, 31. Dezember");
+  check("formatDateDE Montag-Check 28.09.2026", TT.formatDateDE("2026-09-28"), "Montag, 28. September");
+
+  /* --- Einheiten: Typ & Notiz (String- und Objekt-Form) --- */
+  check("entryType String", TT.entryType("werfen"), "werfen");
+  check("entryType Objekt", TT.entryType({ t: "ausdauer", n: "30 min" }), "ausdauer");
+  check("entryType Muell", TT.entryType(42), null);
+  check("entryNote String -> leer", TT.entryNote("werfen"), "");
+  check("entryNote Objekt", TT.entryNote({ t: "werfen", n: "Lang wirft" }), "Lang wirft");
+  check("entryNote Objekt ohne n", TT.entryNote({ t: "werfen" }), "");
+  check("entryNote Objekt n kein String", TT.entryNote({ t: "werfen", n: 42 }), "");
+  check("packEntries: ohne Notiz -> String", TT.packEntries([{ t: "werfen", n: "" }]), ["werfen"]);
+  check("packEntries: mit Notiz -> Objekt", TT.packEntries([{ t: "ausdauer", n: "10 km" }]), [{ t: "ausdauer", n: "10 km" }]);
+  check("packEntries: gemischt", TT.packEntries([{ t: "werfen", n: "" }, { t: "beine", n: "Kniebeugen" }]), ["werfen", { t: "beine", n: "Kniebeugen" }]);
+
+  /* --- Datenbereinigung: gemischte Formate, alte Backups bleiben lesbar --- */
+  const clean = TT.sanitizeData({
+    "2026-10-01": ["werfen", { t: "ausdauer", n: "30 min Joggen" }, "unsinn"],
+    "2026-10-02": [{ t: "field" }, { t: "beine", n: 42 }, { t: "stretching", n: "Huefte" }],
+    "nicht-ein-datum": ["ausdauer"],
+    "2026-10-03": "kein-array",
+    "2026-10-04": [],
+    "2026-10-05": [{ t: "unbekannt" }],
+  });
+  check("Sanitize: gemischte Einheiten", clean, {
+    "2026-10-01": ["werfen", { t: "ausdauer", n: "30 min Joggen" }],
+    "2026-10-02": ["field", "beine", { t: "stretching", n: "Huefte" }],
+  });
+  check("Sanitize: leeres Objekt ok", TT.sanitizeData({}), {});
+  check("Sanitize: Muell rein -> nichts raus", TT.sanitizeData(null), {});
+  check("Sanitize: Array rein -> nichts raus", TT.sanitizeData(["x"]), {});
+
+  /* --- 8 Kategorien mit erwarteten Farben --- */
+  check("8 Typen konfiguriert", TT.TYPES.length, 8);
+  const ids = TT.TYPES.map((t) => t.id);
+  check("Neue Kategorien vorhanden", ["training", "stretching"].every((id) => ids.includes(id)), true);
+  const colors = {};
+  TT.TYPES.forEach((t) => { colors[t.id] = t.color; });
+  check("Farben korrekt", colors, {
+    werfen: "#3B82F6", ausdauer: "#22C55E", field: "#F97316",
+    training: "#EAB308", stretching: "#EC4899",
+    beine: "#A855F7", oberkoerper: "#EF4444", sonstiges: "#64748B",
+  });
+
+  /* --- Monatszusammenfassung (Trainings-TAGE, objekt- und string-kompatibel) --- */
+  const sample = {
+    "2026-10-01": ["werfen", { t: "ausdauer", n: "NOTE" }],
+    "2026-10-05": ["werfen"],
+    "2026-10-10": [],
+    "2026-09-30": ["werfen"],          // anderer Monat -> ignoriert
+    "2026-10-15": ["unbekannt"],       // unbekannter Typ -> ignoriert
+    "2026-11-01": ["ausdauer"],        // anderer Monat -> ignoriert
+  };
+  const sum = TT.monthSummary(sample, 2026, 9);
+  check("Summary Werfen", sum.perType.werfen, 2);
+  check("Summary Ausdauer", sum.perType.ausdauer, 1);
+  check("Summary Training (0)", sum.perType.training, 0);
+  check("Summary Trainingstage gesamt", sum.totalDays, 2);
+
+  /* --- Einheiten pro Monat (fuer Diagramm) --- */
+  const units = TT.monthUnitCounts(sample, 2026, 9);
+  check("Units Werfen", units.perType.werfen, 2);
+  check("Units Ausdauer", units.perType.ausdauer, 1);
+  check("Units gesamt", units.total, 3);
+  const unitsAug = TT.monthUnitCounts(sample, 2026, 7); // August: keine Eintraege im Sample
+  check("Units anderer Monat = 0", unitsAug.total, 0);
+
+  /* --- Letzte 12 Monate --- */
+  const m12 = TT.lastNMonths(2026, 9, 12);
+  check("lastNMonths Laenge", m12.length, 12);
+  check("lastNMonths aeltester Monat (Nov 2025)", m12[0], { y: 2025, m: 10 });
+  check("lastNMonths letzter Monat (Okt 2026)", m12[11], { y: 2026, m: 9 });
+  const m3 = TT.lastNMonths(2026, 0, 3); // Jahreswechsel Jan 2026
+  check("lastNMonths Jahreswechsel", m3[0], { y: 2025, m: 10 });
+  check("lastNMonths n=1", TT.lastNMonths(2026, 9, 1), [{ y: 2026, m: 9 }]);
+
+  /* --- Wochentage: Wochenstart Montag --- */
+  check("Wochenstart ist Montag", TT.WEEKDAYS_FULL[0], "Montag");
+  check("Sonntag ist letzter Wochentag", TT.WEEKDAYS_FULL[6], "Sonntag");
+
+  /* --- Ausgabe --- */
+  out.unshift("ERGEBNIS: " + passed + " PASS, " + failed + " FAIL");
+  document.getElementById("results").textContent = out.join("\n");
+  document.title = failed === 0 ? "TESTS-OK" : "TESTS-FAIL";
+})();
+</script>
+</body>
+</html>
