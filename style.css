@@ -267,9 +267,12 @@ main {
   gap: 10px;
 }
 
+/* Feste Label-Breite relativ zur Kartenbreite, damit die Balken
+   aller Zeilen an derselben x-Position starten (unabhängig von der
+   Länge des Kategorie-Names). */
 .summary li {
   display: grid;
-  grid-template-columns: minmax(96px, auto) 1fr auto;
+  grid-template-columns: minmax(96px, 38%) 1fr auto;
   align-items: center;
   gap: 10px;
   font-size: 0.85rem;
@@ -476,7 +479,7 @@ main {
 /* Gestapelter Balken: unterste Kategorie = erste in TYPES */
 .chart-bar {
   width: 100%;
-  height: 110px;
+  height: 220px;
   border-radius: 6px;
   overflow: hidden;
   background: var(--surface-2);
@@ -499,6 +502,60 @@ main {
 .chart-label.current {
   color: var(--accent);
   font-weight: 700;
+}
+
+/* ---------- All-Time-Diagramm ---------- */
+
+/* Alle Kategorien auf der x-Achse, Balkenhöhe = Einheiten all-time */
+.chart-cats {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cat-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Anzahl über dem Balken (fixe Höhe wie .chart-total) */
+.cat-total {
+  min-height: 1.1em;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Balkenbereich: fixe Höhe, Balken unten bündig */
+.cat-bar-area {
+  width: 100%;
+  height: 150px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-2);
+  display: flex;
+  align-items: flex-end;
+}
+
+.cat-bar {
+  width: 100%;
+  min-height: 3px;  /* auch 1 Einheit bleibt sichtbar */
+  transition: height 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* Kategorienamen unter dem Balken (umbrechend, damit lange Namen passen) */
+.cat-label {
+  font-size: 0.55rem;
+  line-height: 1.25;
+  color: var(--text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Detail-Textfelder im Tages-Sheet ---------- */

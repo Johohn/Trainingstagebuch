@@ -129,16 +129,16 @@
   check("Sanitize: Muell rein -> nichts raus", TT.sanitizeData(null), {});
   check("Sanitize: Array rein -> nichts raus", TT.sanitizeData(["x"]), {});
 
-  /* --- 8 Kategorien mit erwarteten Farben --- */
-  check("8 Typen konfiguriert", TT.TYPES.length, 8);
+  /* --- 9 Kategorien mit erwarteten Farben --- */
+  check("9 Typen konfiguriert", TT.TYPES.length, 9);
   const ids = TT.TYPES.map((t) => t.id);
-  check("Neue Kategorien vorhanden", ["training", "stretching"].every((id) => ids.includes(id)), true);
+  check("Neue Kategorien vorhanden", ["training", "stretching", "turniertag"].every((id) => ids.includes(id)), true);
   const colors = {};
   TT.TYPES.forEach((t) => { colors[t.id] = t.color; });
   check("Farben korrekt", colors, {
     werfen: "#3B82F6", ausdauer: "#22C55E", field: "#F97316",
     training: "#EAB308", stretching: "#EC4899",
-    beine: "#A855F7", oberkoerper: "#EF4444", sonstiges: "#64748B",
+    beine: "#A855F7", oberkoerper: "#EF4444", turniertag: "#14B8A6", sonstiges: "#64748B",
   });
 
   /* --- Monatszusammenfassung (Trainings-TAGE, objekt- und string-kompatibel) --- */
@@ -172,6 +172,14 @@
   const m3 = TT.lastNMonths(2026, 0, 3); // Jahreswechsel Jan 2026
   check("lastNMonths Jahreswechsel", m3[0], { y: 2025, m: 10 });
   check("lastNMonths n=1", TT.lastNMonths(2026, 9, 1), [{ y: 2026, m: 9 }]);
+
+  /* --- All-Time-Zaehlung (alle Monate, String- und Objekt-Form) --- */
+  const all = TT.allTimeCounts(sample);
+  check("AllTime Werfen", all.perType.werfen, 3);
+  check("AllTime Ausdauer", all.perType.ausdauer, 2);
+  check("AllTime Turniertag (0)", all.perType.turniertag, 0);
+  check("AllTime gesamt", all.total, 5);
+  check("AllTime leere Daten", TT.allTimeCounts({}).total, 0);
 
   /* --- Wochentage: Wochenstart Montag --- */
   check("Wochenstart ist Montag", TT.WEEKDAYS_FULL[0], "Montag");

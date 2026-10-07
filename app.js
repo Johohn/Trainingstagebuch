@@ -13,14 +13,15 @@
 
 // Workout-Typen: hier zentral ändern (ID, Label, Farbe)
 const TYPES = [
-  { id: "werfen",      label: "Werfen",                    color: "#3B82F6" },
-  { id: "ausdauer",    label: "Ausdauer",                  color: "#22C55E" },
-  { id: "field",       label: "Field Workout (Cuts, Agility)", color: "#F97316" },
-  { id: "training",    label: "Ultimate Training",         color: "#EAB308" },
-  { id: "stretching",  label: "Stretching/Mobility",       color: "#EC4899" },
-  { id: "beine",       label: "Beinkraft",                 color: "#A855F7" },
-  { id: "oberkoerper", label: "Oberkörper Kraft",          color: "#EF4444" },
-  { id: "sonstiges",   label: "Sonstiges",                 color: "#64748B" },
+  { id: "training",    label: "Ultimate Training",         color: "#F6114A" },
+  { id: "beine",       label: "Beinkraft",                 color: "#0AA0BF" },
+  { id: "werfen",      label: "Werfen",                    color: "#F36E98" },
+  { id: "ausdauer",    label: "Ausdauer",                  color: "#78B177" },
+  { id: "stretching",  label: "Stretching/Mobility",       color: "#9862A2" },
+  { id: "field",       label: "Field Workout (Cuts, Agility)", color: "#F05006" },
+  { id: "oberkoerper", label: "Oberkörper Kraft",          color: "#25998F" },
+  { id: "turniertag",  label: "Turniertag",                color: "#FCA00C" },
+  { id: "sonstiges",   label: "Sonstiges",                 color: "#6f7986" },
 ];
 
 const MONTHS = [
@@ -190,6 +191,27 @@ function lastNMonths(y, m, n) {
   return out;
 }
 
+/**
+ * Einheiten All-Time: pro Typ die Gesamtanzahl über alle gespeicherten Tage
+ * (Tag x Typ = 1 Einheit) und die Gesamtzahl – Grundlage fürs All-Time-Diagramm.
+ */
+function allTimeCounts(data) {
+  const perType = {};
+  TYPES.forEach((t) => { perType[t.id] = 0; });
+  let total = 0;
+  Object.keys(data).forEach((key) => {
+    const entries = Array.isArray(data[key]) ? data[key] : [];
+    entries.forEach((e) => {
+      const id = entryType(e);
+      if (perType[id] !== undefined) {
+        perType[id] += 1;
+        total += 1;
+      }
+    });
+  });
+  return { perType, total };
+}
+
 /** Daten bereinigen: nur gültige Schlüssel, bekannte Typ-IDs, Text-Notizen. */
 function sanitizeData(raw) {
   const clean = {};
@@ -251,6 +273,8 @@ const el = {
   summary: document.getElementById("summary"),
   summaryTotal: document.getElementById("summaryTotal"),
   chart: document.getElementById("chart"),
+  chartAllTime: document.getElementById("chartAllTime"),
+  chartAllTimeTotal: document.getElementById("chartAllTimeTotal"),
   backdrop: document.getElementById("backdrop"),
   sheet: document.getElementById("sheet"),
   sheetDate: document.getElementById("sheetDate"),
@@ -420,10 +444,60 @@ function renderChart() {
   });
 }
 
+/* ---------- All-Time-Diagramm ---------- */
+
+/**
+ * Balkendiagramm über alle Kategorien: Balkenhöhe = Anzahl Einheiten all-time,
+ * farbcodiert nach Kategorie (Reihenfolge wie TYPES).
+ */
+function renderAllTimeChart() {
+  const { perType, total } = allTimeCounts(state.data);
+  const max = Math.max(1, ...Object.values(perType));
+
+  el.chartAllTime.textContent = "";
+  TYPES.forEach((t) => {
+    const c = perType[t.id];
+
+    const col = document.createElement("div");
+    col.className = "cat-col";
+
+    // Anzahl über dem Balken
+    const count = document.createElement("span");
+    count.className = "cat-total";
+    count.textContent = c;
+
+    // Balken (Farbe = Kategorie)
+    const area = document.createElement("div");
+    area.className = "cat-bar-area";
+    const bar = document.createElement("div");
+    bar.className = "cat-bar";
+    bar.style.background = t.color;
+    bar.style.height = (c / max) * 100 + "%";
+    bar.title = t.label + ": " + c;
+    area.appendChild(bar);
+
+    // Kategorienlabel
+    const label = document.createElement("span");
+    label.className = "cat-label";
+    label.title = t.label;
+    label.textContent = t.label;
+
+    col.append(count, area, label);
+    el.chartAllTime.appendChild(col);
+  });
+
+  el.chartAllTimeTotal.textContent = "";
+  const num = document.createElement("span");
+  num.className = "num";
+  num.textContent = total;
+  el.chartAllTimeTotal.append(num, document.createTextNode(" Einheiten insgesamt"));
+}
+
 function renderAll() {
   renderCalendar();
   renderSummary();
   renderChart();
+  renderAllTimeChart();
 }
 
 /* ---------- Bottom Sheet (Tag) ---------- */
@@ -754,7 +828,7 @@ function init() {
 window.TT = {
   TYPES, MONTHS, MONTHS_SHORT, WEEKDAYS_FULL,
   pad2, dateKey, parseKey, daysInMonth, buildMonthGrid,
-  formatDateDE, monthSummary, monthUnitCounts, lastNMonths,
+  formatDateDE, monthSummary, monthUnitCounts, lastNMonths, allTimeCounts,
   entryType, entryNote, normalizeEntry, packEntries, sanitizeData,
 };
 
